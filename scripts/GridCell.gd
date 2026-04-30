@@ -1,5 +1,5 @@
 extends Node2D
-## GridCell: A single cell in the 4x3 grid pool
+## GridCell: A single cell in the 3x3 grid pool
 ##
 ## Responsibilities:
 ## - Stores logical coordinates (logical_x, logical_y)
@@ -23,6 +23,8 @@ var grid_manager: GridManager
 
 ## Debug text overlay
 var debug_text: String = ""
+var debug_overlay_enabled: bool = false
+var pool_index: int = -1
 
 # Debug font for drawing debug overlay (assign in editor). If unset, debug text won't be drawn.
 @export var debug_font: Font
@@ -34,6 +36,7 @@ var debug_text: String = ""
 
 @onready var color_rect: ColorRect = $ColorRect
 @onready var sprite_2d: Sprite2D = $Sprite2D
+@onready var debug_label: Label = get_node_or_null("DebugLabel")
 
 # ============================================================================
 # LIFECYCLE
@@ -50,32 +53,42 @@ func _ready() -> void:
 	if color_rect:
 		color_rect.mouse_entered.connect(_on_mouse_entered)
 		color_rect.mouse_exited.connect(_on_mouse_exited)
+		color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	if not debug_label:
+		debug_label = Label.new()
+		debug_label.name = "DebugLabel"
+		debug_label.position = Vector2(12, 8)
+		debug_label.z_index = 200
+		add_child(debug_label)
+	debug_label.visible = false
 
 
 # ============================================================================
 # CONTENT MANAGEMENT
 # ============================================================================
 
-func update_content(logical_x: int, logical_y: int) -> void:
+func update_content(new_logical_x: int, new_logical_y: int) -> void:
 	"""
 	Called when this cell is recycled to a new logical position.
 	Update visual content (background, procedural decorations, etc.)
 	"""
-	self.logical_x = logical_x
-	self.logical_y = logical_y
+	self.logical_x = new_logical_x
+	self.logical_y = new_logical_y
 	
 	# Update background color (optional variation per cell)
 	_update_background()
 	
 	# Clear old decoration children
 	for child in get_children():
-		if child is not ColorRect and child is not Sprite2D:
+		if child is not ColorRect and child is not Sprite2D and child is not Label:
 			child.queue_free()
 	
 	# Generate and place procedural content
 	_generate_decorations(self.logical_x, self.logical_y)
 	
-	debug_text = "(%d, %d)" % [logical_x, logical_y]
+	debug_text = "(%d, %d)" % [new_logical_x, new_logical_y]
+	_update_debug_overlay()
 
 
 func _update_background() -> void:
@@ -118,7 +131,7 @@ func _spawn_flora(lx: int, ly: int, seed_val: int) -> void:
 	
 	# Deterministic position within cell
 	var local_x = (seed_val % 400) - 200
-	var local_y = int(seed_val / 400) % 400 - 200
+	var local_y = int(floor(float(seed_val) / 400.0)) % 400 - 200
 	flora.position = Vector2(local_x, local_y)
 	
 	# Draw a small circle
@@ -128,6 +141,15 @@ func _spawn_flora(lx: int, ly: int, seed_val: int) -> void:
 func set_debug_text(text: String) -> void:
 	"""Set debug overlay text."""
 	debug_text = text
+	_update_debug_overlay()
+
+func set_pool_index(index: int) -> void:
+	pool_index = index
+	_update_debug_overlay()
+
+func set_debug_overlay_enabled(enabled: bool) -> void:
+	debug_overlay_enabled = enabled
+	_update_debug_overlay()
 
 
 # ============================================================================
@@ -146,33 +168,22 @@ func _on_mouse_exited() -> void:
 		color_rect.modulate = Color.WHITE
 
 
-func _input(event: InputEvent) -> void:
-	"""
-	Forward input events to instruments in this cell.
-	This allows instruments to handle their own tap/drag logic.
-	"""
-	
-	# Only handle input if it's within this cell
-	if not color_rect or not color_rect.get_rect().has_point(get_local_mouse_position()):
-		return
-	
-	# Pass input to all child instruments
-	for child in get_children():
-		if child is Instrument:
-			child._handle_input(event)
-
-
 # ============================================================================
 # VISUALIZATION (DEBUG)
 # ============================================================================
 
 func _draw() -> void:
-	"""Draw debug overlay if needed."""
-	if debug_text:
-		# Use an assigned font resource for drawing. Node2D/CanvasItem does not implement
-		# Control's theme helper methods like get_theme_font(), so we avoid calling them.
-		if debug_font:
-			draw_string(debug_font, Vector2(10, 30), debug_text, HORIZONTAL_ALIGNMENT_LEFT, -1, debug_font_size, Color.BLACK)
-		else:
-			# No font assigned: skip drawing to avoid errors
-			return
+	"""No-op; debug text now uses persistent Label child."""
+	return
+
+func _update_debug_overlay() -> void:
+	if not debug_label:
+		return
+	debug_label.visible = debug_overlay_enabled
+	if not debug_overlay_enabled:
+		return
+	var cell_num := pool_index + 1
+	var wx := wrapi(logical_x, 0, 3)
+	var wy := wrapi(logical_y, 0, 3)
+	var wrapped_id := (wy * 3) + wx
+	debug_label.text = "P%d | W%d\nL(%d,%d)" % [cell_num, wrapped_id, logical_x, logical_y]

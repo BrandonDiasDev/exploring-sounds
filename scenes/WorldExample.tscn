@@ -41,15 +41,6 @@ position = Vector2(512, 1024)
 [node name="GridCell_08" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
 position = Vector2(1024, 1024)
 
-[node name="GridCell_09" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
-position = Vector2(1536, 0)
-
-[node name="GridCell_10" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
-position = Vector2(1536, 512)
-
-[node name="GridCell_11" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
-position = Vector2(1536, 1024)
-
 [node name="InstrumentsContainer" type="Node2D" parent="GridManager"]
 
 [node name="Instrument_0" parent="GridManager/InstrumentsContainer" instance=ExtResource("3_qf8je")]

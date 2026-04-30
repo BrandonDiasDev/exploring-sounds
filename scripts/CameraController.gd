@@ -24,6 +24,7 @@ class_name CameraController
 
 ## Verbose debug logging for camera movement
 @export var CAMERA_DEBUG_LOGS: bool = false
+@export var allow_mouse_drag_pan: bool = true
 
 # ============================================================================
 # STATE
@@ -37,6 +38,8 @@ var camera_velocity: Vector2 = Vector2.ZERO
 
 ## Previous input direction
 var prev_input_dir: Vector2 = Vector2.ZERO
+var is_mouse_panning: bool = false
+var mouse_pan_delta: Vector2 = Vector2.ZERO
 
 # ============================================================================
 # LIFECYCLE
@@ -56,8 +59,8 @@ func _physics_process(delta: float) -> void:
 	if grid_manager and grid_manager.is_instrument_being_dragged():
 		# Freeze camera; apply damping to stop momentum
 		camera_velocity = camera_velocity.lerp(Vector2.ZERO, 0.1)
-		if CAMERA_DEBUG_LOGS:
-			print("[CameraController] Freeze: dragging active, pos=%s" % global_position)
+		is_mouse_panning = false
+		mouse_pan_delta = Vector2.ZERO
 		return
 	
 	# Get input
@@ -67,8 +70,14 @@ func _physics_process(delta: float) -> void:
 	input_dir = prev_input_dir.lerp(input_dir, smoothing)
 	prev_input_dir = input_dir
 	
-	# Calculate desired velocity
+	# Calculate desired velocity (keyboard + mouse pan)
 	var desired_velocity = input_dir * pan_speed
+	if allow_mouse_drag_pan and is_mouse_panning:
+		var zoom_x = max(zoom.x, 0.0001)
+		var zoom_y = max(zoom.y, 0.0001)
+		var mouse_velocity = Vector2(-mouse_pan_delta.x * zoom_x, -mouse_pan_delta.y * zoom_y) / max(delta, 0.0001)
+		desired_velocity += mouse_velocity
+		mouse_pan_delta = Vector2.ZERO
 	
 	# Smooth velocity change
 	camera_velocity = camera_velocity.lerp(desired_velocity, smoothing)
@@ -76,9 +85,6 @@ func _physics_process(delta: float) -> void:
 	# Update camera position
 	global_position += camera_velocity * delta
 	
-	if debug_mode or CAMERA_DEBUG_LOGS:
-		print("[CameraController] pos=%s, vel=%s, dragging=%s" 
-			% [global_position, camera_velocity, grid_manager.is_instrument_being_dragged() if grid_manager else false])
 
 
 # ============================================================================
@@ -129,3 +135,27 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		if event.pressed and event.keycode == KEY_F1:
 			debug_mode = not debug_mode
+			if grid_manager:
+				grid_manager.debug_mode = debug_mode
+			if CAMERA_DEBUG_LOGS:
+				print("[CameraController] F1 debug toggle: camera_debug=%s grid_debug=%s"
+					% [debug_mode, grid_manager.debug_mode if grid_manager else false])
+	
+	if not allow_mouse_drag_pan:
+		return
+	
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			if not (grid_manager and grid_manager.is_instrument_being_dragged()):
+				is_mouse_panning = true
+				mouse_pan_delta = Vector2.ZERO
+				if CAMERA_DEBUG_LOGS:
+					print("[CameraController] Mouse pan START")
+		else:
+			if is_mouse_panning and CAMERA_DEBUG_LOGS:
+				print("[CameraController] Mouse pan END")
+			is_mouse_panning = false
+			mouse_pan_delta = Vector2.ZERO
+	elif event is InputEventMouseMotion:
+		if is_mouse_panning and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			mouse_pan_delta += event.relative

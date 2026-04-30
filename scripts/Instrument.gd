@@ -38,7 +38,7 @@ signal drag_ended(instrument_id: String)
 @export var allow_dragging: bool = true
 
 ## Debug logging for drag operations
-@export var INSTR_DEBUG_LOGS: bool = true
+@export var INSTR_DEBUG_LOGS: bool = false
 
 # ============================================================================
 # STATE VARIABLES
@@ -55,8 +55,8 @@ var is_long_press_fired: bool = false
 
 ## Drag state
 var is_dragging: bool = false
-var drag_start_position: Vector2 = Vector2.ZERO
-var drag_offset: Vector2 = Vector2.ZERO
+var drag_pointer_start_world: Vector2 = Vector2.ZERO
+var drag_instrument_start_world: Vector2 = Vector2.ZERO
 
 ## Reference to GridManager
 var grid_manager: GridManager
@@ -96,6 +96,11 @@ func _ready() -> void:
 	else:
 		if not grid_manager:
 			print("[Instrument] WARNING: grid_manager is NULL for %s" % instrument_id)
+	
+	if grid_manager and grid_manager.has_method("register_instrument"):
+		grid_manager.register_instrument(self)
+	else:
+		call_deferred("_late_register_with_grid")
 
 
 func _process(_delta: float) -> void:
@@ -110,8 +115,10 @@ func _process(_delta: float) -> void:
 # TOUCH INPUT HANDLING
 # ============================================================================
 
-func _on_area_input_event(_camera: Node, event: InputEvent, _position: Vector2, _normal: Vector2, _shape_idx: int) -> void:
-	"""Handle input events from Area2D (5 params from Area2D.input_event signal)."""
+func _on_area_input_event(_viewport: Node, event: InputEvent, _shape_idx: int) -> void:
+	"""Handle input events from Area2D.input_event (viewport, event, shape_idx)."""
+	if INSTR_DEBUG_LOGS:
+		print("[Instrument] %s input_event received: %s" % [instrument_id, event.get_class()])
 	_handle_input(event)
 
 
@@ -124,12 +131,18 @@ func _handle_input(event: InputEvent) -> void:
 	"""
 	
 	if event is InputEventMouseButton:
+		if INSTR_DEBUG_LOGS:
+			print("[Instrument] %s mouse_button: pressed=%s pos=%s"
+				% [instrument_id, event.pressed, event.position])
 		if event.pressed:
 			_on_press_start(event.position)
 		else:
 			_on_press_end(event.position)
 	
 	elif event is InputEventScreenTouch:
+		if INSTR_DEBUG_LOGS:
+			print("[Instrument] %s screen_touch: pressed=%s pos=%s"
+				% [instrument_id, event.pressed, event.position])
 		if event.pressed:
 			_on_press_start(event.position)
 		else:
@@ -145,8 +158,8 @@ func _on_press_start(input_position: Vector2) -> void:
 	is_pressed = true
 	press_start_time = Time.get_ticks_msec() / 1000.0
 	is_long_press_fired = false
-	drag_start_position = input_position
-	drag_offset = Vector2.ZERO
+	drag_pointer_start_world = _screen_to_world(input_position)
+	drag_instrument_start_world = global_position
 	
 	if INSTR_DEBUG_LOGS:
 		print("[Instrument] %s _on_press_start: input_pos=%s, world_pos=%s, logical=(%d,%d)" 
@@ -199,41 +212,28 @@ func _on_drag_update(input_position: Vector2) -> void:
 	if not allow_dragging:
 		return
 	
-	# Calculate drag offset
-	drag_offset = input_position - drag_start_position
+	var pointer_world := _screen_to_world(input_position)
+	var drag_delta_world := pointer_world - drag_pointer_start_world
 	
 	# Start drag if offset exceeds threshold
-	if not is_dragging and drag_offset.length() > 10.0:
+	if not is_dragging and drag_delta_world.length() > 10.0:
 		_start_drag()
 	
 	# Update position during drag
 	if is_dragging:
-		var new_global_pos = drag_start_position + drag_offset
+		var new_global_pos = drag_instrument_start_world + drag_delta_world
 		global_position = new_global_pos
 		
 		if INSTR_DEBUG_LOGS:
-			print("[Instrument] %s _on_drag_update: drag_offset=%s, new_global_pos=%s" 
-				% [instrument_id, drag_offset, new_global_pos])
+			print("[Instrument] %s _on_drag_update: drag_delta_world=%s, new_global_pos=%s" 
+				% [instrument_id, drag_delta_world, new_global_pos])
 		
-		# Notify GridManager of new position
+		# Notify GridManager of new world position.
 		if _ensure_grid_manager():
-			var new_logical = grid_manager.get_logical_coords_at_world_position(global_position)
+			grid_manager.update_instrument_world_position(instrument_id, global_position)
 			if INSTR_DEBUG_LOGS:
-				print("  → Computed logical coords: (%d,%d), current logical: (%d,%d)" 
-					% [new_logical.x, new_logical.y, logical_x, logical_y])
-			
-			if new_logical.x != logical_x or new_logical.y != logical_y:
-				if INSTR_DEBUG_LOGS:
-					print("  → Cell transition: old_logical=(%d,%d), new_logical=(%d,%d)" 
-						% [logical_x, logical_y, new_logical.x, new_logical.y])
-				
-				var move_result = grid_manager.move_instrument(instrument_id, new_logical.x, new_logical.y)
-				if move_result:
-					logical_x = new_logical.x
-					logical_y = new_logical.y
-				else:
-					push_error("[Instrument] %s move_instrument failed at logical=(%d,%d)" 
-						% [instrument_id, new_logical.x, new_logical.y])
+				print("[Instrument] %s grid sync ok: world_pos=%s logical=(%d,%d)"
+					% [instrument_id, global_position, logical_x, logical_y])
 		else:
 			push_error("[Instrument] %s grid_manager STILL NULL after retry!" % instrument_id)
 
@@ -270,6 +270,7 @@ func _start_drag() -> void:
 			% [instrument_id, global_position, logical_x, logical_y])
 	
 	if _ensure_grid_manager():
+		grid_manager.update_instrument_world_position(instrument_id, global_position)
 		grid_manager.start_dragging_instrument(instrument_id)
 	else:
 		push_error("[Instrument] %s cannot start drag - grid_manager not found!" % instrument_id)
@@ -285,6 +286,7 @@ func _end_drag() -> void:
 	drag_ended.emit(instrument_id)
 	
 	if _ensure_grid_manager():
+		grid_manager.update_instrument_world_position(instrument_id, global_position)
 		grid_manager.stop_dragging_instrument()
 	else:
 		push_error("[Instrument] %s cannot stop drag - grid_manager not found!" % instrument_id)
@@ -298,6 +300,13 @@ func set_grid_position(grid_logical_x: int, grid_logical_y: int) -> void:
 	"""Called by GridManager when instrument's logical position changes."""
 	self.logical_x = grid_logical_x
 	self.logical_y = grid_logical_y
+
+func refresh_collision_state() -> void:
+	"""Refresh Area2D broad-phase registration to avoid seam ghost collisions."""
+	if not area_2d:
+		return
+	area_2d.set_deferred("monitoring", false)
+	area_2d.set_deferred("monitoring", true)
 
 
 # ============================================================================
@@ -332,3 +341,16 @@ func _vibrate(duration_ms: int) -> void:
 		Input.vibrate_handheld(duration_ms)
 		return
 	# Otherwise no-op (editor/desktop without haptics)
+
+func _screen_to_world(screen_pos: Vector2) -> Vector2:
+	var viewport := get_viewport()
+	if not viewport:
+		return screen_pos
+	# Godot 4.x: convert viewport/screen coordinates to world canvas coordinates.
+	return viewport.get_canvas_transform().affine_inverse() * screen_pos
+
+func _late_register_with_grid() -> void:
+	if not _ensure_grid_manager():
+		return
+	if grid_manager.has_method("register_instrument"):
+		grid_manager.register_instrument(self)

@@ -1,0 +1,25 @@
+; Godot ignore file - specifies files/folders to exclude from project
+; Godot 4.6 format
+
+# Build outputs
+export/
+build/
+dist/
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Optional: Large asset directories (uncomment if needed)
+# assets/audio/*.ogg
+# assets/graphics/*.png

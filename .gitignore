@@ -1,0 +1,26 @@
+# Godot-specific ignores
+.godot/
+*.gdshader.tmp
+*.tscn.tmp
+*.tres.tmp
+*.import
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build output
+build/
+dist/
+export/
+
+# Audio assets (optional, if large)
+# assets/audio/*.ogg
+# assets/audio/*.wav

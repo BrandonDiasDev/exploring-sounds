@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://d3lxe52yt8ijh"]
+
+[ext_resource type="Script" path="res://scripts/AudioManager.gd" id="1_m2kpi"]
+
+[node name="AudioManager" type="Node"]
+script = ExtResource("1_m2kpi")
+fade_out_duration = 0.2

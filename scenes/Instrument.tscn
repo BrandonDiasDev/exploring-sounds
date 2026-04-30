@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://botaupayc688t"]
+
+[ext_resource type="Script" uid="uid://cmttmgelgumwf" path="res://scripts/Instrument.gd" id="1_h4mba"]
+[ext_resource type="Texture2D" uid="uid://vj7r3nxqvmpb" path="res://icon.svg" id="2_silot"]
+
+[sub_resource type="CircleShape2D" id="1_x5o4u"]
+radius = 30.0
+
+[node name="Instrument" type="Node2D" unique_id=771101894]
+script = ExtResource("1_h4mba")
+
+[node name="Area2D" type="Area2D" parent="." unique_id=164140548]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=308997118]
+shape = SubResource("1_x5o4u")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1301421764]
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("2_silot")

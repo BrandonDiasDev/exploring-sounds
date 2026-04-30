@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://dkq6rj73qrfpm"]
+
+[ext_resource type="Script" path="res://scripts/GridCell.gd" id="1_2p5nj"]
+
+[node name="GridCell" type="Node2D"]
+script = ExtResource("1_2p5nj")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 512.0
+offset_bottom = 512.0
+color = Color(1, 1, 1, 1)
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(256, 256)

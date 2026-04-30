@@ -1,0 +1,83 @@
+[gd_scene format=3 uid="uid://dorc7wfvvk4mh"]
+
+[ext_resource type="Script" path="res://scripts/GridManager.gd" id="1_6ayni"]
+[ext_resource type="PackedScene" uid="uid://dkq6rj73qrfpm" path="res://scenes/GridCell.tscn" id="2_xlbur"]
+[ext_resource type="PackedScene" uid="uid://c5p8k7h3u1bme" path="res://scenes/Instrument.tscn" id="3_qf8je"]
+[ext_resource type="Script" path="res://scripts/CameraController.gd" id="4_v2a6r"]
+
+[node name="WorldExample" type="Node2D"]
+
+[node name="GridManager" type="Node2D" parent="."]
+script = ExtResource("1_6ayni")
+cell_size = Vector2(512, 512)
+debug_mode = true
+
+[node name="CellsContainer" type="Node2D" parent="GridManager"]
+
+[node name="GridCell_00" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(0, 0)
+
+[node name="GridCell_01" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(512, 0)
+
+[node name="GridCell_02" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(1024, 0)
+
+[node name="GridCell_03" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(0, 512)
+
+[node name="GridCell_04" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(512, 512)
+
+[node name="GridCell_05" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(1024, 512)
+
+[node name="GridCell_06" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(0, 1024)
+
+[node name="GridCell_07" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(512, 1024)
+
+[node name="GridCell_08" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(1024, 1024)
+
+[node name="GridCell_09" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(1536, 0)
+
+[node name="GridCell_10" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(1536, 512)
+
+[node name="GridCell_11" parent="GridManager/CellsContainer" instance=ExtResource("2_xlbur")]
+position = Vector2(1536, 1024)
+
+[node name="InstrumentsContainer" type="Node2D" parent="GridManager"]
+
+[node name="Instrument_0" parent="GridManager/InstrumentsContainer" instance=ExtResource("3_qf8je")]
+position = Vector2(256, 256)
+instrument_id = "flute"
+
+[node name="Instrument_1" parent="GridManager/InstrumentsContainer" instance=ExtResource("3_qf8je")]
+position = Vector2(768, 256)
+instrument_id = "drum"
+
+[node name="Instrument_2" parent="GridManager/InstrumentsContainer" instance=ExtResource("3_qf8je")]
+position = Vector2(512, 768)
+instrument_id = "bell"
+
+[node name="Camera2D" type="Camera2D" parent="."]
+global_position = Vector2(512, 512)
+enabled = true
+zoom = Vector2(1, 1)
+script = ExtResource("4_v2a6r")
+pan_speed = 300.0
+smoothing = 0.1
+debug_mode = false
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="DebugLabel" type="Label" parent="UI"]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 200.0
+offset_bottom = 50.0
+text = "Grid System Ready"
